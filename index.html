@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+    <title>爱心动画</title>
+    <style>
+        :root{ --glow-r1:10px; --glow-r2:22px; }
+        html,body{
+            height:100%;margin:0;overflow:hidden;
+            font-family:"微软雅黑",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+            transition:background 1s;
+            background:
+                radial-gradient(1200px 600px at 50% 45%, rgba(255,255,255,.65), rgba(255,255,255,0) 60%),
+                radial-gradient(circle at 50% 45%, #fff4f7 0%, #c9eaff 100%);
+        }
+        body.dark{
+            background:
+                radial-gradient(1200px 600px at 50% 45%, rgba(18,18,18,.8), rgba(0,0,0,0) 60%),
+                radial-gradient(circle at 50% 45%, #121212 0%, #000000 100%);
+            color:#eee;
+        }
+        body.dark.eco{ --glow-r1:6px; --glow-r2:14px; }
+
+        .stage{position:relative;width:100%;height:100%;}
+
+        .msg{
+            position:absolute;left:50%;top:50%;
+            padding:10px 16px;border-radius:16px;
+            color:#fff;font-weight:700;
+            font-size:clamp(14px,3vmin,22px);
+            text-shadow:0 2px 8px rgba(0,0,0,.28);
+            opacity:0;
+            transform:translate(-50%,-50%) translate(var(--dx),var(--dy)) scale(.75) rotate(var(--rot));
+            animation: flight var(--dur) cubic-bezier(.25,.7,.3,1) var(--delay) both;
+            box-shadow:0 8px 26px rgba(0,0,0,.22);
+            will-change: transform, opacity;
+            background: var(--bg);
+        }
+        body.dark .msg{
+            box-shadow:none;
+            filter: drop-shadow(0 0 var(--glow-r1) var(--glow1, rgba(0,0,0,0)))
+                    drop-shadow(0 0 var(--glow-r2) var(--glow2, rgba(0,0,0,0)));
+        }
+
+        @keyframes flight{
+            0%{
+                opacity:0;
+                transform:translate(-50%,-50%) translate(var(--dx),var(--dy)) scale(.75) rotate(var(--rot));
+            }
+            18%{ opacity:1; }
+            45%{
+                transform:translate(-50%,-50%) translate(calc(var(--dx)*.2),calc(var(--dy)*.2)) scale(1.06);
+            }
+            70%{
+                transform:translate(-50%,-50%) translate(calc(var(--dx)*1.15),calc(var(--dy)*1.15)) scale(.95) rotate(var(--rot));
+            }
+            88%{
+                transform:translate(-50%,-50%) translate(calc(var(--heart-x)*.6),calc(var(--heart-y)*.6)) scale(.9) rotate(var(--heart-rot));
+            }
+            100%{
+                opacity:1;
+                transform:translate(-50%,-50%) translate(var(--heart-x),var(--heart-y)) scale(1) rotate(var(--heart-rot));
+            }
+        }
+
+        .msg::before,.msg::after{
+            content:''; position:absolute; left:50%; top:0;
+            background:inherit;
+            border-radius:50px 50px 0 0;
+            width:22px; height:34px; opacity:0;
+            transition:opacity .28s ease;
+            transform-origin:0 100%; transform:rotate(-45deg); z-index:0;
+        }
+        .msg::after{
+            left:0; transform-origin:100% 100%; transform:rotate(45deg);
+        }
+        .msg.heart-mode{ color:#fff; }
+        .msg .text{ position:relative; z-index:1; }
+        .msg.heart-mode::before,.msg.heart-mode::after{ opacity:1; }
+
+        .msg.locked{
+            animation:none;
+            transform:translate(-50%,-50%) translate(var(--heart-x),var(--heart-y)) scale(1) rotate(var(--heart-rot));
+            opacity:1;
+        }
+        .msg.locked.pulse{ animation:pulse 2.2s ease-in-out 1; }
+        .msg.locked::before,.msg.locked::after{ display:none; }
+        body.dark .msg.locked{ filter:none; }
+        .msg.locked .text{ text-shadow:0 1px 2px rgba(0,0,0,.12); }
+
+        @keyframes pulse{
+            0%,100%{ transform:translate(-50%,-50%) translate(var(--heart-x),var(--heart-y)) scale(1); }
+            50%   { transform:translate(-50%,-50%) translate(var(--heart-x),var(--heart-y)) scale(1.08); }
+        }
+
+        /* 爆炸动画（核心破碎效果） */
+        .msg.burst{ animation: burst 1.4s cubic-bezier(.17,.6,.2,1) forwards; }
+        @keyframes burst{
+            0%{ opacity:1; transform:translate(-50%,-50%) translate(var(--heart-x),var(--heart-y)) scale(1); filter:blur(0); }
+            70%{ opacity:.9; transform:translate(-50%,-50%) translate(calc(var(--heart-x) + var(--bx)*0.7), calc(var(--heart-y) + var(--by)*0.7)) scale(.9) rotate(var(--rot)); filter:blur(.3px); }
+            100%{ opacity:0; transform:translate(-50%,-50%) translate(calc(var(--heart-x) + var(--bx)), calc(var(--heart-y) + var(--by))) scale(.7) rotate(var(--rot)); filter:blur(1px); }
+        }
+
+        .center-title{
+            position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+            font-weight:800; letter-spacing:.12em;
+            font-size:clamp(18px,4vmin,28px);
+            color:rgba(255,105,180,.7); text-shadow:0 2px 10px rgba(255,105,180,.18);
+            opacity:.0; pointer-events:none;
+            animation:titleIn 1.2s ease 0.8s both;
+        }
+        body.dark .center-title{ color:rgba(255,160,200,.9); text-shadow:0 0 18px rgba(255,130,200,.35); }
+        @keyframes titleIn{ from{opacity:0; transform:translate(-50%,-55%);} to{opacity:.95; transform:translate(-50%,-50%);} }
+
+        .controls{ 
+            position:absolute; 
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display:flex; 
+            gap: 10px; 
+            align-items:center;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            padding: 8px 12px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            z-index: 1000; /* 确保按钮在最上层 */
+        }
+        .btn{
+            padding: 8px 12px; 
+            border:none; 
+            border-radius:15px;
+            background:rgba(255,255,255,.5); 
+            backdrop-filter:blur(8px);
+            color:#222; 
+            font-weight:600; 
+            cursor:pointer;
+            box-shadow:0 3px 10px rgba(0,0,0,.15);
+            transition: all 0.3s ease;
+            font-size: 13px;
+            min-width: 90px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(0,0,0,.2);
+        }
+        body.dark .btn{ 
+            background:rgba(255,255,255,.15); 
+            color:#fff; 
+        }
+
+        .snow{
+            position:fixed; top:-10px; color:white;
+            user-select:none; pointer-events:none;
+            z-index:99; text-shadow:0 0 8px rgba(255,255,255,.8);
+            animation:snowfall linear forwards;
+        }
+        @keyframes snowfall{ 0%{ transform:translateY(0) rotate(0deg); opacity:1;} 100%{ transform:translateY(100vh) rotate(360deg); opacity:0;} }
+
+        #bgMusic { display: none; }
+
+        /* 新增弹窗样式 */
+        .mini-modal {
+            position: fixed;
+            width: 180px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            opacity: 0;
+            z-index: 999;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        body.dark .mini-modal {
+            background: #2a2a3c;
+        }
+        
+        .mini-modal.effect-1 {
+            transform: scale(0.8) translateY(-30px);
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .mini-modal.effect-2 {
+            transform: scale(0.6) translateX(-50px);
+            transition: all 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        .mini-modal.effect-3 {
+            transform: scale(0.7) rotate(-10deg);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .mini-modal.active.effect-1 {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+        
+        .mini-modal.active.effect-2 {
+            opacity: 1;
+            transform: scale(1) translateX(0);
+        }
+        
+        .mini-modal.active.effect-3 {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+        
+        .mini-modal.clicked {
+            animation: clickEffect 0.6s ease;
+        }
+        
+        @keyframes clickEffect {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
+        
+        .mini-modal-header {
+            padding: 8px 12px;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .mini-modal-content {
+            padding: 12px;
+            background-color: #fff9fc;
+            color: #666;
+            font-size: 13px;
+            line-height: 1.4;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        body.dark .mini-modal-content {
+            background-color: #3a3a52;
+            color: #ddd;
+        }
+        
+        .text-effect-fadein .mini-modal-content {
+            animation: fadeIn 2s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .heart {
+            position: absolute;
+            font-size: 20px;
+            color: #ff6b9d;
+            pointer-events: none;
+            z-index: 1000;
+            animation: heartFloat 1s ease-out forwards;
+        }
+        
+        @keyframes heartFloat {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(0, -50px) scale(1.5);
+            }
+        }
+        
+        .header-color-1 { background-color: #ff6b9d; }
+        .header-color-2 { background-color: #ff8fab; }
+        .header-color-3 { background-color: #ff9ac8; }
+        .header-color-4 { background-color: #ffb6c1; }
+        .header-color-5 { background-color: #ffc2d1; }
+        .header-color-6 { background-color: #a8e6cf; }
+        .header-color-7 { background-color: #b5e8e0; }
+        .header-color-8 { background-color: #c7ceea; }
+        .header-color-9 { background-color: #ffd3b6; }
+        .header-color-10 { background-color: #ffaaa5; }
+        .header-color-11 { background-color: #b8e0d2; }
+        .header-color-12 { background-color: #d4a5a5; }
+        .header-color-13 { background-color: #95b8d1; }
+        .header-color-14 { background-color: #e8d5b7; }
+        .header-color-15 { background-color: #c9cbff; }
+        .header-color-16 { background-color: #ffb7c5; }
+        .header-color-17 { background-color: #a0e7e5; }
+        .header-color-18 { background-color: #b4f8c8; }
+        .header-color-19 { background-color: #fbe7c6; }
+        .header-color-20 { background-color: #ffaebc; }
+        
+        @media (max-width: 768px) {
+            .mini-modal {
+                width: 160px;
+            }
+            
+            .mini-modal-content {
+                font-size: 12px;
+                min-height: 70px;
+                padding: 10px;
+            }
+            
+            .mini-modal-header {
+                padding: 6px 10px;
+                font-size: 13px;
+            }
+            
+            .controls {
+                bottom: 15px;
+                padding: 6px 10px;
+            }
+            
+            .btn {
+                min-width: 80px;
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="stage" id="stage">
+        <div class="center-title" id="title">for you ♥</div>
+    </div>
+    <div class="controls">
+        <button class="btn" id="theme-btn">深色模式</button>
+        <button class="btn" id="music-btn">播放音乐</button>
+        <button class="btn" id="replay-btn">重放</button>
+    </div>
+    
+    <audio id="bgMusic" loop>
+        <source src="https://lf26-music-east.douyinstatic.com/obj/ies-music-hj/7495920705440140091.mp3" type="audio/mpeg">
+        <source src="https://lf26-music-east.douyinstatic.com/obj/ies-music-hj/7495920705440140091.mp3" type="audio/ogg">
+    </audio>
+
+<script>
+const tips=[
+    '想念在风里飘','月亮为你亮','喜欢你很久了','你是我的心动','温柔落在人间',
+    '星光都为你闪','梦里有你真好','世界因你柔软','心跳为你加速','有你真好',
+    '你是独一无二的光','遇见你是浪漫的开始','晚风也温柔了','你的笑融化星海',
+    '想陪你看星星','今夜的梦给你','宇宙都在偏爱你','你是人间的奇迹',
+    '拥抱要紧一点','想你成习惯了','一瞬也是永恒','你眼里有星星','你的温柔让我沦陷',
+    '风都是甜的','为你心动不止','想成为你的例外','心有桃花一片','你是我梦里的海',
+    '想和你看海','此刻的风想你','遇见你后时间变慢','所有浪漫都与你有关',
+    '想靠近你一点','你的名字是我心事','心软是因为你','想牵你的手看日落',
+    '每次想你星星都亮了','心跳藏不住','有你世界亮一点','甜在风里也在心里'
+];
+
+// 新增弹窗消息数组
+const romanticMessages = [
+    "在这个特别的日子，我想对你说：你是我生命中最甜蜜的惊喜！",
+    "星光照亮了夜晚，而你照亮了我的世界。",
+    "如果糖果是甜的，那你就是我的整个糖果店。我的甜心！",
+    "我选择给你我全部的爱！",
+    "你是我最想要的'捣蛋'，也是我一生最珍惜的'款待'！",
+    "在这个充满魔法的夜晚，我只想和你一起创造属于我们的浪漫回忆。",
+    "月光下，我只想和你一起漫步，直到永远。",
+    "你比任何糖果都甜，比任何灯光都明亮。",
+    "在这个神秘的夜晚，我的心里只有一个愿望：和你在一起。",
+    "如果爱有魔法，那你就是我最神奇的魔法！",
+    "我选择给你我全部的心！",
+    "夜晚，我只想和你一起分享甜蜜和浪漫。",
+    "你是我最想要的惊喜，也是我一生最珍惜的礼物！",
+    "在这个充满魔法的夜晚，我只想对你说：我爱你！",
+    "灯光照亮了道路，而你照亮了我的心灵。",
+    "命运让一切变得可能，包括让我遇见你！",
+    "你是我最甜蜜的糖果，也是我一生的珍藏！",
+    "在这个神秘的夜晚，我的心里只有你！",
+    "月光下，我只想和你一起度过！",
+    "你是我最想要的惊喜！",
+    "夜晚，因为有你在身边而变得特别！",
+    "你是我最甜蜜的糖果，也是我一生的幸福！",
+    "在这个神秘的夜晚，我只想和你一起分享甜蜜！",
+    "月光下，我只想对你说：你是我的一切！",
+    "你是我最珍贵的礼物！",
+    "命运让我遇见了你，这是我最大的幸运！",
+    "你是我最甜蜜的惊喜！",
+    "在这个特别的夜晚，我只想和你在一起！",
+    "月光下，我只想对你说：我爱你！",
+    "你是我最想要的糖果！",
+    "命运让我们相遇，这是我最大的幸福！",
+    "你是我最甜蜜的惊喜，也是我一生的挚爱！",
+    "在这个神秘的夜晚，我只想和你一起创造美好回忆！",
+    "月光下，我只想对你说：你是我的一切！",
+    "你是我最珍贵的礼物，也是我一生的宝藏！",
+    "命运让我遇见了你，这是我最大的幸运！",
+    "你是我最甜蜜的糖果，也是我一生的幸福！",
+    "在这个特别的夜晚，我只想和你一起分享快乐！",
+    "我爱你！",
+    "你是我最想要的惊喜，也是我一生的挚爱！"
+];
+
+const headerClasses = [
+    'header-color-1', 'header-color-2', 'header-color-3', 
+    'header-color-4', 'header-color-5', 'header-color-6',
+    'header-color-7', 'header-color-8', 'header-color-9',
+    'header-color-10', 'header-color-11', 'header-color-12',
+    'header-color-13', 'header-color-14', 'header-color-15',
+    'header-color-16', 'header-color-17', 'header-color-18',
+    'header-color-19', 'header-color-20'
+];
+
+const stage  = document.getElementById('stage');
+const title  = document.getElementById('title');
+const bgMusic = document.getElementById('bgMusic');
+const musicBtn = document.getElementById('music-btn');
+const themeBtn = document.getElementById('theme-btn');
+const replayBtn = document.getElementById('replay-btn');
+
+let dark = false;
+let eco = false;
+let snowRunning = false;
+let snowFrame;
+let lastSnowTime = 0;
+let snowIntervalMs = 700;
+let snowMax = 120;
+let totalCurrent = 0;
+let lockedCount = 0;
+
+// 新增：全局变量用于控制弹窗逻辑
+let isInModalPhase = false;
+let modalInterval = null;
+let activeModalsCount = 0;
+
+// 新增：音乐播放状态
+let isMusicPlaying = false;
+let userInteracted = false; // 用户是否已与页面交互
+
+const directions = [
+    {dx:'0vw',dy:'-80vh'},{dx:'0vw',dy:'80vh'},
+    {dx:'-80vw',dy:'0vh'},{dx:'80vw',dy:'0vh'},
+    {dx:'-70vw',dy:'-70vh'},{dx:'70vw',dy:'-70vh'},
+    {dx:'-70vw',dy:'70vh'},{dx:'70vw',dy:'70vh'},
+    {dx:'0vw',dy:'-60vh'},{dx:'0vw',dy:'60vh'},
+    {dx:'-60vw',dy:'0vh'},{dx:'60vw',dy:'0vh'}
+];
+
+function rand(min,max){return Math.random()*(max-min)+min;}
+
+function hexToRgba(hex,alpha=1){
+    const h=hex.replace('#','');
+    const short=h.length===3;
+    const r=parseInt(short? h[0]+h[0] : h.slice(0,2),16);
+    const g=parseInt(short? h[1]+h[1] : h.slice(2,4),16);
+    const b=parseInt(short? h[2]+h[2] : h.slice(4,6),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function randomStyle(){
+    const arr=[
+        ['#ff758c','#ff7eb3'], ['#a18cd1','#fbc2eb'],
+        ['#f6d365','#fda085'], ['#84fab0','#8fd3f4'],
+        ['#f093fb','#f5576c'], ['#4facfe','#00f2fe'],
+        ['#43e97b','#38f9d7'], ['#fa709a','#fee140'],
+        ['#30cfd0','#330867'], ['#5ee7df','#b490ca']
+    ];
+    const [c1,c2]=arr[Math.floor(Math.random()*arr.length)];
+    return {
+        bg:`linear-gradient(135deg,${c1},${c2})`,
+        glow1:hexToRgba(c1,0.55),
+        glow2:hexToRgba(c2,0.35)
+    };
+}
+
+function heartScale(){
+    const minDim = Math.min(window.innerWidth, window.innerHeight);
+    let s = Math.round(minDim * 0.023);
+    s = Math.max(8, Math.min(22, s));
+    if (dark && eco) s = Math.max(8, Math.floor(s * 0.92));
+    return s;
+}
+
+function centerYOffset(){
+    const portrait = window.innerHeight > window.innerWidth;
+    const minDim = Math.min(window.innerWidth, window.innerHeight);
+    return portrait ? -minDim * 0.06 : 0;
+}
+
+function heartXY(t){
+    const s = heartScale();
+    const x = s * (16 * Math.sin(t)**3);
+    const y = -s * (13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t));
+    return {x: x+'px', y: (y + centerYOffset())+'px'};
+}
+
+function createMsg(i,total){
+    const el = document.createElement('div');
+    el.className = 'msg';
+
+    const d = directions[Math.floor(Math.random()*directions.length)];
+    el.style.setProperty('--dx', d.dx);
+    el.style.setProperty('--dy', d.dy);
+    el.style.setProperty('--rot', rand(-55,55)+'deg');
+
+    const baseDur = dark && eco ? rand(6.2,7.6) : rand(6.8,8.6);
+    el.style.setProperty('--dur', baseDur+'s');
+    el.style.setProperty('--delay', (i*0.11 + rand(0,0.35))+'s');
+    
+    const sty = randomStyle();
+    el.style.setProperty('--bg', sty.bg);
+    el.style.setProperty('--glow1', sty.glow1);
+    el.style.setProperty('--glow2', sty.glow2);
+
+    const t = (i / total) * Math.PI * 2;
+    const {x,y} = heartXY(t);
+    el.style.setProperty('--heart-x', x);
+    el.style.setProperty('--heart-y', y);
+    el.style.setProperty('--heart-rot', rand(-18,18)+'deg');
+
+    const span = document.createElement('span');
+    span.className = 'text';
+    span.textContent = tips[Math.floor(Math.random()*tips.length)];
+    el.appendChild(span);
+
+    const delay = parseFloat(el.style.getPropertyValue('--delay'));
+    const dur   = parseFloat(el.style.getPropertyValue('--dur'));
+    const switchAt = delay + dur * 0.86;
+    const switchTimer = setTimeout(()=>{ el.classList.add('heart-mode'); }, switchAt*1000);
+
+    el.addEventListener('animationend',()=>{
+        clearTimeout(switchTimer);
+        el.classList.add('heart-mode','locked','pulse');
+        el.style.willChange = 'auto';
+
+        const spread = rand(140, 260);
+        const ang    = rand(0, Math.PI*2);
+        const bx = Math.cos(ang)*spread;
+        const by = Math.sin(ang)*spread;
+        el.style.setProperty('--bx', bx+'px');
+        el.style.setProperty('--by', by+'px');
+
+        lockedCount++;
+        if(lockedCount===totalCurrent && !isInModalPhase) onAllLocked();
+    }, {once:true});
+
+    stage.appendChild(el);
+}
+
+function finalBurst(){
+    stage.querySelectorAll('.msg.locked').forEach(el=>{
+        el.classList.remove('pulse');
+        const jitter = rand(0, 200);
+        setTimeout(()=> el.classList.add('burst'), jitter);
+        el.addEventListener('animationend',()=> el.remove(), {once:true});
+    });
+    title.style.opacity = 0;
+    
+    // 新增：绽放后显示弹窗
+    setTimeout(() => {
+        startMiniModals();
+    }, 1000);
+}
+
+function play(){
+    // 清除所有弹窗和定时器
+    stopMiniModals();
+    document.querySelectorAll('.mini-modal').forEach(modal => modal.remove());
+    
+    stage.querySelectorAll('.msg').forEach(n=>n.remove());
+    title.style.opacity = 0;
+
+    // 重置状态
+    isInModalPhase = false;
+    activeModalsCount = 0;
+    lockedCount = 0;
+
+    const minDim = Math.min(window.innerWidth, window.innerHeight);
+    let TOTAL;
+    if (minDim <= 420) {
+        TOTAL = dark ? (eco ? 80 : 110) : 150;
+    } else if (minDim <= 720) {
+        TOTAL = dark ? (eco ? 96 : 130) : 180;
+    } else {
+        TOTAL = dark ? (eco ? 96 : 140) : 200;
+    }
+    totalCurrent = TOTAL;
+    for(let i=0;i<TOTAL;i++) createMsg(i,TOTAL);
+
+    setTimeout(()=>{ title.style.opacity = 1; }, 1400);
+    
+    // 如果音乐正在播放，则重新开始播放音乐
+    if (isMusicPlaying) {
+        bgMusic.currentTime = 0;
+        bgMusic.play().catch(error => {
+            console.log('音乐播放需要用户交互:', error);
+        });
+    }
+}
+
+function playMusic() {
+    if (!userInteracted) return; // 确保用户已与页面交互
+    
+    bgMusic.currentTime = 0;
+    bgMusic.play().then(() => {
+        isMusicPlaying = true;
+        musicBtn.textContent = '暂停音乐';
+    }).catch(error => {
+        console.log('音乐播放需要用户交互:', error);
+    });
+}
+
+function pauseMusic() {
+    bgMusic.pause();
+    isMusicPlaying = false;
+    musicBtn.textContent = '播放音乐';
+}
+
+function toggleMusic() {
+    if (!userInteracted) {
+        userInteracted = true;
+        playMusic();
+        return;
+    }
+    
+    if (isMusicPlaying) {
+        pauseMusic();
+    } else {
+        playMusic();
+    }
+}
+
+function createSnow(){
+    const snow=document.createElement('div');
+    snow.className='snow';
+    snow.textContent='❄';
+    snow.style.left=(Math.random()*100)+'vw';
+    snow.style.fontSize=(Math.random()*12+8)+'px';
+    snow.style.opacity=(Math.random()*0.8+0.2);
+    const duration=(Math.random()*5+6);
+    snow.style.animationDuration=duration+'s';
+    document.body.appendChild(snow);
+    setTimeout(()=>snow.remove(),duration*1000);
+}
+
+function loopSnow(ts){
+    if(!lastSnowTime) lastSnowTime=ts;
+    const delta=ts-lastSnowTime;
+    if(delta>snowIntervalMs){
+        if(snowRunning){
+            const count = document.querySelectorAll('.snow').length;
+            if(count < snowMax) createSnow();
+        }
+        lastSnowTime=ts;
+    }
+    snowFrame=requestAnimationFrame(loopSnow);
+}
+
+function startSnow(){ snowRunning=true; lastSnowTime=0; loopSnow(); }
+function stopSnow(){ 
+    snowRunning=false; 
+    cancelAnimationFrame(snowFrame); 
+    document.querySelectorAll('.snow').forEach(s=>s.remove()); 
+}
+
+function decideEco(){
+    const cores = navigator.hardwareConcurrency || 4;
+    const mem = navigator.deviceMemory || 4;
+    const area = window.innerWidth * window.innerHeight;
+    return (cores <= 4) || (mem <= 4) || (area >= 2400*1440);
+}
+
+function applyMode(){
+    document.body.classList.toggle('dark', dark);
+    if(dark){
+        eco = decideEco();
+        document.body.classList.toggle('eco', eco);
+        snowIntervalMs = eco ? 800 : 500;
+        snowMax = eco ? 100 : 180;
+        startSnow();
+        themeBtn.textContent = '浅色模式';
+    }else{
+        stopSnow();
+        document.body.classList.remove('eco');
+        themeBtn.textContent = '深色模式';
+    }
+}
+
+/* 所有元素锁定后触发破碎效果（核心修改） */
+function onAllLocked(){
+    if(dark){
+        snowIntervalMs = eco ? 700 : 400;
+        snowMax = eco ? 140 : 240;
+    }
+
+    // 延迟2秒后破碎（可修改2000为其他毫秒数调整停留时间）
+    setTimeout(()=>{
+        finalBurst();
+    }, 2000);
+}
+
+// 新增：检查是否为移动设备
+function isMobileDevice() {
+    return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+// 新增：开始显示迷你弹窗
+function startMiniModals() {
+    isInModalPhase = true;
+    let modalCount = 0;
+    activeModalsCount = 0; // 重置活跃弹窗计数
+    const isMobile = isMobileDevice();
+    const maxModals = isMobile ? 100 : 280;
+    
+    modalInterval = setInterval(() => {
+        if (modalCount >= maxModals) {
+            clearInterval(modalInterval);
+            
+            // 检查所有弹窗是否都已创建完成
+            const checkAllCreated = setInterval(() => {
+                if (activeModalsCount === maxModals) {
+                    clearInterval(checkAllCreated);
+                    // 所有弹窗显示后延迟3秒执行散开效果
+                    setTimeout(() => {
+                        spreadAndRestart();
+                    }, 3000);
+                }
+            }, 100);
+            
+            return;
+        }
+        
+        const numToCreate = Math.random() > 0.5 ? 2 : 1;
+        
+        for (let i = 0; i < numToCreate; i++) {
+            if (modalCount < maxModals) {
+                createMiniModal(isMobile, () => {
+                    activeModalsCount++;
+                });
+                modalCount++;
+            }
+        }
+    }, 300);
+}
+
+// 新增：停止弹窗创建
+function stopMiniModals() {
+    if (modalInterval) {
+        clearInterval(modalInterval);
+        modalInterval = null;
+    }
+    isInModalPhase = false;
+}
+
+// 新增：创建迷你弹窗
+function createMiniModal(isMobile, onCreated) {
+    const modal = document.createElement('div');
+    modal.className = 'mini-modal';
+    
+    const effectNum = Math.floor(Math.random() * 3) + 1;
+    modal.classList.add(`effect-${effectNum}`);
+    
+    // 随机位置，但避开按钮区域
+    const buttonAreaHeight = 120; // 按钮区域高度
+    const buttonAreaWidth = 400; // 按钮区域宽度
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight;
+    
+    let x, y;
+    let attempts = 0;
+    const maxAttempts = 20;
+    
+    do {
+        x = Math.random() * (window.innerWidth - (isMobile ? 160 : 180));
+        y = Math.random() * (window.innerHeight - 120);
+        attempts++;
+    } while (
+        attempts < maxAttempts && 
+        y > window.innerHeight - buttonAreaHeight && 
+        x > centerX - buttonAreaWidth/2 && 
+        x < centerX + buttonAreaWidth/2
+    );
+    
+    // 如果尝试次数超过最大尝试次数，则使用最后一次生成的位置
+    modal.style.left = `${x}px`;
+    modal.style.top = `${y}px`;
+    
+    // 随机标题背景色
+    const headerClass = headerClasses[Math.floor(Math.random() * headerClasses.length)];
+    
+    // 创建头部
+    const header = document.createElement('div');
+    header.className = `mini-modal-header ${headerClass}`;
+    header.textContent = '♥ 留言 ♥';
+    
+    // 创建内容
+    const content = document.createElement('div');
+    content.className = 'mini-modal-content';
+    content.textContent = romanticMessages[Math.floor(Math.random() * romanticMessages.length)];
+    
+    modal.appendChild(header);
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+    
+    // 显示动画
+    setTimeout(() => {
+        modal.classList.add('active');
+        onCreated(); // 通知弹窗已创建完成
+    }, 10);
+    
+    // 点击效果
+    modal.addEventListener('click', () => {
+        modal.classList.add('clicked');
+        
+        // 创建爱心动画
+        const heart = document.createElement('div');
+        heart.className = 'heart';
+        heart.textContent = '♥';
+        heart.style.left = '50%';
+        heart.style.top = '50%';
+        modal.appendChild(heart);
+        
+        // 点击后移除
+        setTimeout(() => {
+            modal.style.opacity = 0;
+            setTimeout(() => {
+                modal.remove();
+                activeModalsCount--;
+            }, 300);
+        }, 600);
+    });
+}
+
+// 新增：弹窗散开并重新开始的函数
+function spreadAndRestart() {
+    const modals = document.querySelectorAll('.mini-modal');
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    
+    modals.forEach(modal => {
+        // 计算从中心到弹窗的方向
+        const modalX = parseFloat(modal.style.left) + (modal.offsetWidth / 2);
+        const modalY = parseFloat(modal.style.top) + (modal.offsetHeight / 2);
+        const angle = Math.atan2(modalY - centerY, modalX - centerX);
+        
+        // 计算散开距离
+        const distance = Math.random() * 200 + 300;
+        
+        // 设置散开动画
+        modal.style.transition = 'all 1s cubic-bezier(0.18, 0.89, 0.32, 1.28)';
+        modal.style.transform = `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance}px) scale(0.5)`;
+        modal.style.opacity = '0';
+    });
+    
+    // 等待散开动画完成后重新开始
+    setTimeout(() => {
+        // 清除所有弹窗
+        document.querySelectorAll('.mini-modal').forEach(modal => modal.remove());
+        
+        // 重新开始整个动画流程
+        play();
+    }, 1000);
+}
+
+// 初始播放
+play();
+
+// 按钮事件
+musicBtn.onclick = toggleMusic;
+
+themeBtn.onclick = () => { 
+    dark = !dark; 
+    applyMode(); 
+    play(); 
+};
+
+replayBtn.onclick = play;
+
+// 窗口大小变化防抖重绘
+let resizeTimer;
+window.addEventListener('resize', ()=>{ 
+    clearTimeout(resizeTimer); 
+    resizeTimer = setTimeout(()=> play(), 150); 
+});
+
+// 用户与页面交互时标记
+document.addEventListener('click', () => {
+    userInteracted = true;
+});
+</script>
+</body>
+</html>
